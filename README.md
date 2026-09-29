@@ -39,7 +39,7 @@ The Docker host needs to:
    |---|---|---|---|
    | `AUDIOBOOKS_PATH` | No | `/mnt/media/Audiobooks` | Absolute audiobook-folder path on the Docker host; mounted read-only for embedded/sidecar chapter reading. Defaults to the empty `audiobooks` folder in this repository. |
    | `AUDIOBOOKS_CONTAINER_PATH` | No | `/audiobooks` | Path to that folder inside BookFreek's container; set it to match the path Jellyfin reports for those audio files |
-   | `BOOKFREEK_PORT` | No | `3001` | Host port used to open BookFreek |
+   | `BOOKFREEK_PORT` | No | `17843` | Host port used to open BookFreek (container port remains `3001`) |
 
 6. Deploy the stack. The first deployment builds the image from the repository and may take a few minutes.
 7. Open `http://<docker-host>:<BOOKFREEK_PORT>` on your local network. In the sign-in screen, enter your Jellyfin server address, username, and password.
@@ -48,7 +48,7 @@ The Docker host needs to:
 
 ### 3. Set up remote or mobile access
 
-For home-screen installation, serve BookFreek over **HTTPS** using your reverse proxy or trusted private-network HTTPS solution. Do not expose the plain HTTP port directly to the public internet. Configure your proxy to forward to the BookFreek container on port `3001` (or your chosen container port).
+For home-screen installation, serve BookFreek over **HTTPS** using your reverse proxy or trusted private-network HTTPS solution. Do not expose the plain HTTP port directly to the public internet. Configure your proxy to forward to the BookFreek container on port `3001`.
 
 Once opened securely on your phone:
 

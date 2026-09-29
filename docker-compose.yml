@@ -9,7 +9,7 @@ services:
       PORT: 3001
       MEDIA_ROOT: ${AUDIOBOOKS_CONTAINER_PATH:-/audiobooks}
     ports:
-      - "${BOOKFREEK_PORT:-3001}:3001"
+      - "${BOOKFREEK_PORT:-17843}:3001"
     volumes:
       - type: bind
         source: ${AUDIOBOOKS_PATH:-./audiobooks}
