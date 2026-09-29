@@ -11,3 +11,14 @@ export function normalizeJellyfinUrl(value: unknown) {
   }
   return parsed.toString().replace(/\/+$/, "");
 }
+
+export function jellyfinAuthorization(token?: string) {
+  const fields = [
+    'Client="BookFreek"',
+    'Device="Web"',
+    'DeviceId="bookfreek-web"',
+    'Version="0.1.0"',
+  ];
+  if (token) fields.push(`Token="${encodeURIComponent(token)}"`);
+  return `MediaBrowser ${fields.join(", ")}`;
+}

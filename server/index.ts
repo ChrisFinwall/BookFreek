@@ -4,7 +4,7 @@ import { parseFile } from "music-metadata";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseSidecar } from "./chapters.js";
-import { normalizeJellyfinUrl } from "./config.js";
+import { jellyfinAuthorization, normalizeJellyfinUrl } from "./config.js";
 
 dotenv.config();
 
@@ -43,7 +43,10 @@ interface JellyfinItem {
 
 function jellyfin(baseUrl: string, pathname: string, token?: string) {
   return fetch(`${baseUrl}${pathname}`, {
-    headers: token ? { "X-Emby-Token": token, "Content-Type": "application/json" } : { "Content-Type": "application/json" },
+    headers: {
+      Authorization: jellyfinAuthorization(token),
+      "Content-Type": "application/json",
+    },
   });
 }
 
@@ -111,7 +114,7 @@ app.post("/api/auth/login", async (req, res) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Emby-Authorization": 'MediaBrowser Client="BookFreek", Device="Web", DeviceId="bookfreek-web", Version="0.1.0"',
+        Authorization: jellyfinAuthorization(),
       },
       body: JSON.stringify({ Username: username, Pw: password }),
     });
@@ -227,7 +230,7 @@ app.post("/api/books/:id/progress", auth, async (req: AuthenticatedRequest, res)
       PlayMethod: "DirectStream",
     })}`, {
       method: "POST",
-      headers: { "X-Emby-Token": req.jellyfinToken! },
+      headers: { Authorization: jellyfinAuthorization(req.jellyfinToken) },
     });
     if (!response.ok) {
       res.status(response.status).json({ error: `Could not save Jellyfin playback progress (${response.status}).` });
@@ -272,7 +275,7 @@ app.get("/api/books/:id/audio", async (req, res) => {
       return;
     }
     const user = await userResponse.json() as { Id: string };
-    const headers: Record<string, string> = { "X-Emby-Token": token };
+    const headers: Record<string, string> = { Authorization: jellyfinAuthorization(token) };
     const range = req.header("range");
     if (range) headers.Range = range;
     const response = await fetch(`${serverUrl}/Audio/${encodeURIComponent(req.params.id)}/universal?UserId=${encodeURIComponent(user.Id)}&DeviceId=bookfreek-web`, {
