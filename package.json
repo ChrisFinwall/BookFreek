@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.server.json && vite build",
     "start": "node dist-server/index.js",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.server.json",
-    "test": "tsx --test server/chapters.test.ts server/config.test.ts"
+    "test": "tsx --test server/chapters.test.ts server/config.test.ts server/metadata.test.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

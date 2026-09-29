@@ -25,6 +25,17 @@ export interface Chapter {
   end?: number;
 }
 
+export interface BookMetadata {
+  title: string;
+  authors: string[];
+  description?: string;
+  firstPublished?: number;
+  coverUrl?: string;
+  sourceUrl?: string;
+  subjects: string[];
+  source: string;
+}
+
 export interface Session {
   userId: string;
   username: string;

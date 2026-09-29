@@ -8,6 +8,7 @@
 
 - **Your Jellyfin audiobook shelf** — browse, search, and sort books from your existing Jellyfin server.
 - **Book-focused presentation** — see Jellyfin cover art, book titles, authors, and in-progress status.
+- **Supplemental book metadata** — look up publication year, description, subjects, and cover art from Open Library without changing your Jellyfin library.
 - **Mobile listening player** — play and pause, seek, skip back 15 seconds or ahead 30 seconds, and jump between chapters.
 - **Pick up where you left off** — save listening position to Jellyfin and resume an unfinished book.
 - **Chapter support** — read chapters embedded in audio files, use a JSON sidecar when present, or fall back to Jellyfin chapter metadata.
@@ -88,11 +89,16 @@ A sidecar can be a JSON array or an object containing a `chapters` array. Times 
 
 The fields `title` or `name` can name a chapter. Its start time can use `start`, `startTime`, or `startSeconds`; an optional end time can use `end`, `endTime`, or `endSeconds`. Give the container read-only access to the media folder; BookFreek does not edit or copy audiobook files.
 
+## Book information
+
+When you select a book, BookFreek looks up its title and author in [Open Library](https://openlibrary.org/). Choose **Book details** in the player to see the best matching record's author, first publication year, book description (or first sentence when no description is available), subjects, and cover. Jellyfin remains the source for your library, playback, progress, and chapters; Open Library information supplements it and is not written back to Jellyfin. The companion service needs outbound internet access for metadata, and the browser needs internet access to load Open Library cover art. If no match is found, or Open Library is unavailable, the Jellyfin book remains playable as usual.
+
 ## Security and privacy
 
 - Enter the Jellyfin address, username, and password in the sign-in screen. The companion service uses the address for this browser session and does not save the password.
 - The server address is remembered in browser local storage and an HTTP-only cookie; it is not part of the stack configuration.
 - The Jellyfin token is held in an HTTP-only, same-site cookie rather than browser-accessible storage or the audio URL.
+- When you select a book, the companion service sends its title and author to Open Library to find a matching public catalog record. Open Library metadata is cached in memory for up to six hours.
 - Use HTTPS whenever credentials or listening sessions travel over a network you do not fully trust.
 - The repository contains application source and deployment configuration, not your library, Jellyfin credentials, or server environment file. Do not commit `.env` or other secrets.
 - The companion service is intended for one trusted user. Keep it behind your private network or a properly secured HTTPS proxy; do not treat a public GitHub repository as the deployment's authentication or network security.

@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseSidecar } from "./chapters.js";
 import { jellyfinAuthorization, normalizeJellyfinUrl, sessionCookieSecure } from "./config.js";
+import { lookupOpenLibraryMetadata } from "./metadata.js";
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ interface JellyfinItem {
   RunTimeTicks?: number;
   ImageTags?: { Primary?: string };
   UserData?: { PlaybackPositionTicks?: number; Played?: boolean };
+  ProviderIds?: Record<string, string>;
   Path?: string;
   Chapters?: Array<{ Name?: string; StartPositionTicks: number }>;
 }
@@ -83,7 +85,7 @@ function setSessionCookies(res: Response, token?: string, serverUrl?: string) {
 }
 
 async function getItem(baseUrl: string, id: string, token: string): Promise<JellyfinItem> {
-  const response = await jellyfin(baseUrl, `/Items/${encodeURIComponent(id)}?Fields=Path,Chapters,MediaSources,Overview,Genres,People,UserData`, token);
+  const response = await jellyfin(baseUrl, `/Items/${encodeURIComponent(id)}?Fields=Path,Chapters,MediaSources,Overview,Genres,People,UserData,ProviderIds`, token);
   if (!response.ok) throw new Error(`Jellyfin item lookup failed (${response.status}).`);
   return response.json() as Promise<JellyfinItem>;
 }
@@ -164,6 +166,18 @@ app.get("/api/books", auth, async (req: AuthenticatedRequest, res) => {
   } catch (error) {
     console.error("Jellyfin library request failed:", error);
     res.status(502).json({ error: error instanceof Error ? error.message : "Could not load the Jellyfin library." });
+  }
+});
+
+app.get("/api/books/:id/metadata", auth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const item = await getItem(req.jellyfinUrl!, req.params.id, req.jellyfinToken!);
+    const title = item.Album || item.Name;
+    const author = item.AlbumArtist || item.Artists?.join(", ");
+    res.json(await lookupOpenLibraryMetadata(title, author));
+  } catch (error) {
+    console.error("External book metadata lookup failed:", error);
+    res.status(502).json({ error: error instanceof Error ? error.message : "Could not load external book metadata." });
   }
 });
 

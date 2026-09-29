@@ -1,4 +1,4 @@
-import type { Book, Chapter, Session } from "./types";
+import type { Book, BookMetadata, Chapter, Session } from "./types";
 
 const sessionKey = "bookfreek.session";
 const serverUrlKey = "bookfreek.serverUrl";
@@ -59,6 +59,10 @@ export function getBooks(query: string, sort: string): Promise<Book[]> {
 
 export function getChapters(id: string): Promise<Chapter[]> {
   return request(`/api/books/${encodeURIComponent(id)}/chapters`);
+}
+
+export function getBookMetadata(id: string): Promise<BookMetadata | null> {
+  return request(`/api/books/${encodeURIComponent(id)}/metadata`);
 }
 
 export async function saveProgress(id: string, position: number, paused = false) {

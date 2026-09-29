@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { audioUrl, getBooks, getChapters, imageUrl, readServerUrl, readSession, saveProgress, saveSession, signOut as signOutRequest, signIn } from "./api";
-import type { Book, Chapter, Session } from "./types";
+import { audioUrl, getBooks, getBookMetadata, getChapters, imageUrl, readServerUrl, readSession, saveProgress, saveSession, signOut as signOutRequest, signIn } from "./api";
+import type { Book, BookMetadata, Chapter, Session } from "./types";
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -18,6 +18,10 @@ function App() {
   const [session, setSession] = useState<Session | null>(() => readSession());
   const [books, setBooks] = useState<Book[]>([]);
   const [selected, setSelected] = useState<Book | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [bookMetadata, setBookMetadata] = useState<BookMetadata | null>(null);
+  const [metadataLoading, setMetadataLoading] = useState(false);
+  const [metadataError, setMetadataError] = useState("");
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("title");
@@ -64,6 +68,21 @@ function App() {
     return () => { cancelled = true; };
   }, [session, selected]);
 
+  useEffect(() => {
+    if (!session || !selected) return;
+    let cancelled = false;
+    setMetadataLoading(true);
+    setMetadataError("");
+    void getBookMetadata(selected.Id).then((result) => {
+      if (!cancelled) setBookMetadata(result);
+    }).catch((reason: unknown) => {
+      if (!cancelled) setMetadataError(reason instanceof Error ? reason.message : "Could not load book metadata.");
+    }).finally(() => {
+      if (!cancelled) setMetadataLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [selected, session]);
+
   useEffect(() => () => window.clearTimeout(saveTimer.current), []);
 
   const currentIndex = useMemo(
@@ -73,6 +92,8 @@ function App() {
 
   function selectBook(book: Book) {
     setSelected(book);
+    setBookMetadata(null);
+    setMetadataError("");
     setCurrentTime(0);
     setDuration(0);
     setPlaying(false);
@@ -212,6 +233,7 @@ function App() {
             <strong>{selected.Album || selected.Name}</strong>
             <span className="player-author">{selected.AlbumArtist || selected.Artists?.join(", ") || "Unknown author"}</span>
             {chapters.length > 0 && <span className="now-chapter">{chapters[currentIndex]?.title ?? "Ready to play"}</span>}
+            <button className="book-details-button" onClick={() => setDetailsOpen(true)}>Book details</button>
           </div>
           <div className="player-controls">
             <div className="scrubber">
@@ -231,6 +253,37 @@ function App() {
           </label>
           <button className="close-player" onClick={() => { audioRef.current?.pause(); setSelected(null); }} aria-label="Close player">×</button>
         </section>
+      )}
+      {selected && detailsOpen && (
+        <div className="details-backdrop" onClick={() => setDetailsOpen(false)}>
+          <section className="details-dialog" role="dialog" aria-modal="true" aria-labelledby="details-title" onClick={(event) => event.stopPropagation()}>
+            <button className="details-close" onClick={() => setDetailsOpen(false)} aria-label="Close book details">×</button>
+            <div className="details-cover">
+              {bookMetadata?.coverUrl || selected.ImageTags?.Primary
+                ? <img
+                    src={bookMetadata?.coverUrl || coverUrl(selected)}
+                    alt=""
+                    onError={(event) => {
+                      if (bookMetadata?.coverUrl && selected.ImageTags?.Primary) event.currentTarget.src = coverUrl(selected);
+                      else event.currentTarget.style.visibility = "hidden";
+                    }}
+                  />
+                : <span className="cover-placeholder" aria-hidden="true">BF</span>}
+            </div>
+            <div className="details-copy">
+              <span className="eyebrow">BOOK INFORMATION</span>
+              <h2 id="details-title">{bookMetadata?.title || selected.Album || selected.Name}</h2>
+              <p className="details-author">{bookMetadata?.authors.join(", ") || selected.AlbumArtist || selected.Artists?.join(", ") || "Author unknown"}</p>
+              {metadataLoading && <p className="muted">Looking up book details…</p>}
+              {metadataError && <p className="error" role="alert">{metadataError}</p>}
+              {!metadataLoading && !metadataError && !bookMetadata && !selected.Overview && <p className="muted">No matching Open Library record was found.</p>}
+              {(bookMetadata?.firstPublished || selected.ProductionYear) && <p className="details-year">First published {bookMetadata?.firstPublished || selected.ProductionYear}</p>}
+              {(bookMetadata?.description || selected.Overview) && <p className="details-description">{bookMetadata?.description || selected.Overview}</p>}
+              {bookMetadata?.subjects.length ? <div className="subject-list">{bookMetadata.subjects.map((subject) => <span key={subject}>{subject}</span>)}</div> : null}
+              {bookMetadata?.sourceUrl && <a className="metadata-source" href={bookMetadata.sourceUrl} target="_blank" rel="noreferrer">Metadata from Open Library ↗</a>}
+            </div>
+          </section>
+        </div>
       )}
       <audio
         ref={audioRef}
