@@ -25,9 +25,7 @@ The Docker host needs to:
 
 - Run Docker Compose.
 - Reach your Jellyfin server over the network.
-- Have the audiobook folder available as a local path for the Compose stack's read-only media mount.
-
-Use a Jellyfin address reachable **from the container**. For example, if Jellyfin runs on another machine, use its LAN address such as `http://192.168.1.20:8096`, not `http://localhost:8096`.
+- Optionally, have the audiobook folder available locally if you want embedded/sidecar chapter extraction.
 
 ### 2. Create the Portainer stack
 
@@ -35,19 +33,18 @@ Use a Jellyfin address reachable **from the container**. For example, if Jellyfi
 2. Choose **Repository** as the build method.
 3. Set the repository URL to `https://github.com/ChrisFinwall/BookFreek`.
 4. Select the `main` branch and set the Compose path to `docker-compose.yml`.
-5. Add these stack environment variables:
+5. Optionally set these stack environment variables:
 
    | Variable | Required | Example | Purpose |
    |---|---|---|---|
-   | `JELLYFIN_URL` | Yes | `http://192.168.1.20:8096` | Jellyfin base URL reachable from the BookFreek container |
-   | `AUDIOBOOKS_PATH` | Yes | `/mnt/media/Audiobooks` | Absolute audiobook-folder path on the Docker host; mounted read-only for embedded/sidecar chapter reading |
+   | `AUDIOBOOKS_PATH` | No | `/mnt/media/Audiobooks` | Absolute audiobook-folder path on the Docker host; mounted read-only for embedded/sidecar chapter reading. Defaults to the empty `audiobooks` folder in this repository. |
    | `AUDIOBOOKS_CONTAINER_PATH` | No | `/audiobooks` | Path to that folder inside BookFreek's container; set it to match the path Jellyfin reports for those audio files |
    | `BOOKFREEK_PORT` | No | `3001` | Host port used to open BookFreek |
 
 6. Deploy the stack. The first deployment builds the image from the repository and may take a few minutes.
-7. Open `http://<docker-host>:<BOOKFREEK_PORT>` on your local network and sign in with your Jellyfin username and password.
+7. Open `http://<docker-host>:<BOOKFREEK_PORT>` on your local network. In the sign-in screen, enter your Jellyfin server address, username, and password.
 
-The Compose stack expects the audiobook folder path and mounts it read-only into the companion container. The path inside BookFreek must match the file paths returned by Jellyfin for local chapter extraction; set `AUDIOBOOKS_CONTAINER_PATH` when Jellyfin uses a different container path. If the paths don't match, BookFreek falls back to Jellyfin's chapter metadata.
+**No Jellyfin URL is needed to create or deploy the stack.** Configure it in BookFreek after deployment. Enter a server address reachable from the BookFreek container, such as `http://192.168.1.20:8096`; `localhost` refers to the BookFreek container itself, not another machine. The server address is remembered in that browser. You can leave `AUDIOBOOKS_PATH` unset to deploy without a media mount; Jellyfin's chapter metadata will still be used. To enable embedded or sidecar chapters, mount the host audiobook folder read-only and make `AUDIOBOOKS_CONTAINER_PATH` match the path Jellyfin reports for those files.
 
 ### 3. Set up remote or mobile access
 
@@ -63,10 +60,9 @@ Once opened securely on your phone:
 Requirements: Node.js 20 or later and a reachable Jellyfin server.
 
 1. Copy `.env.example` to `.env`.
-2. Set `JELLYFIN_URL` to the Jellyfin address reachable from your computer.
-3. Optionally set `MEDIA_ROOT` to the audiobook folder.
-4. Run `npm install`, then `npm run dev`.
-5. Open `http://localhost:5173`.
+2. Optionally set `MEDIA_ROOT` to the read-only audiobook folder.
+3. Run `npm install`, then `npm run dev`.
+4. Open `http://localhost:5173` and enter the Jellyfin server address on the sign-in screen.
 
 For a production build outside Portainer, run `npm run build`, set `NODE_ENV=production`, and run `npm start`. The production server serves both the app and its API on port `3001` by default.
 
@@ -93,7 +89,8 @@ The fields `title` or `name` can name a chapter. Its start time can use `start`,
 
 ## Security and privacy
 
-- BookFreek sends the Jellyfin password to its companion service to authenticate with Jellyfin. It does not save the password.
+- Enter the Jellyfin address, username, and password in the sign-in screen. The companion service uses the address for this browser session and does not save the password.
+- The server address is remembered in browser local storage and an HTTP-only cookie; it is not part of the stack configuration.
 - The Jellyfin token is held in an HTTP-only, same-site cookie rather than browser-accessible storage or the audio URL.
 - Use HTTPS whenever credentials or listening sessions travel over a network you do not fully trust.
 - The repository contains application source and deployment configuration, not your library, Jellyfin credentials, or server environment file. Do not commit `.env` or other secrets.

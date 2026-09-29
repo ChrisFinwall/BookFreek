@@ -28,6 +28,7 @@ export interface Chapter {
 export interface Session {
   userId: string;
   username: string;
+  serverUrl: string;
 }
 
 export interface ApiError {

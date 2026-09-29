@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { audioUrl, getBooks, getChapters, imageUrl, readSession, saveProgress, saveSession, signOut as signOutRequest, signIn } from "./api";
+import { audioUrl, getBooks, getChapters, imageUrl, readServerUrl, readSession, saveProgress, saveSession, signOut as signOutRequest, signIn } from "./api";
 import type { Book, Chapter, Session } from "./types";
 
 function formatTime(seconds: number) {
@@ -23,6 +23,7 @@ function App() {
   const [sort, setSort] = useState("title");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [serverUrl, setServerUrl] = useState(() => readServerUrl());
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [currentTime, setCurrentTime] = useState(0);
@@ -119,7 +120,7 @@ function App() {
     setLoading(true);
     setError("");
     try {
-      setSession(await signIn(username, password));
+      setSession(await signIn(serverUrl, username, password));
       setPassword("");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Sign in failed.");
@@ -146,14 +147,15 @@ function App() {
           <Brand />
           <p className="eyebrow">YOUR PERSONAL LISTENING SHELF</p>
           <h1>A good story<br />is always close.</h1>
-          <p className="muted">Sign in with your Jellyfin account to find your audiobooks.</p>
+          <p className="muted">Connect to your Jellyfin server to find and play your audiobooks.</p>
           <form onSubmit={(event) => void handleLogin(event)} className="login-form">
+            <label>Jellyfin server address<input type="url" inputMode="url" autoComplete="url" placeholder="http://192.168.1.20:8096" value={serverUrl} onChange={(event) => setServerUrl(event.target.value)} required /></label>
             <label>Jellyfin username<input autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required /></label>
             <label>Password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
             {error && <p className="error" role="alert">{error}</p>}
             <button className="primary-button" disabled={loading}>{loading ? "Connecting…" : "Connect to Jellyfin"}</button>
           </form>
-          <p className="fine-print">Server: configured by your BookFreek administrator.</p>
+          <p className="fine-print">Use the server address reachable from BookFreek, including its port if needed.</p>
         </section>
       </main>
     );

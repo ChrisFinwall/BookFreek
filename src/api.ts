@@ -1,15 +1,17 @@
 import type { Book, Chapter, Session } from "./types";
 
 const sessionKey = "bookfreek.session";
+const serverUrlKey = "bookfreek.serverUrl";
 
 export function readSession(): Session | null {
   const value = localStorage.getItem(sessionKey);
   if (!value) return null;
   try {
     const parsed = JSON.parse(value) as Partial<Session>;
-    if (typeof parsed.userId !== "string" || typeof parsed.username !== "string") throw new Error("Invalid session");
-    const session = { userId: parsed.userId, username: parsed.username };
+    if (typeof parsed.userId !== "string" || typeof parsed.username !== "string" || typeof parsed.serverUrl !== "string") throw new Error("Invalid session");
+    const session = { userId: parsed.userId, username: parsed.username, serverUrl: parsed.serverUrl };
     localStorage.setItem(sessionKey, JSON.stringify(session));
+    localStorage.setItem(serverUrlKey, session.serverUrl);
     return session;
   } catch {
     localStorage.removeItem(sessionKey);
@@ -17,9 +19,17 @@ export function readSession(): Session | null {
   }
 }
 
+export function readServerUrl() {
+  return localStorage.getItem(serverUrlKey) ?? "";
+}
+
 export function saveSession(session: Session | null) {
-  if (session) localStorage.setItem(sessionKey, JSON.stringify(session));
-  else localStorage.removeItem(sessionKey);
+  if (session) {
+    localStorage.setItem(sessionKey, JSON.stringify(session));
+    localStorage.setItem(serverUrlKey, session.serverUrl);
+  } else {
+    localStorage.removeItem(sessionKey);
+  }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -31,11 +41,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function signIn(username: string, password: string): Promise<Session> {
+export async function signIn(serverUrl: string, username: string, password: string): Promise<Session> {
+  localStorage.setItem(serverUrlKey, serverUrl);
   const result = await request<Session>("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ serverUrl, username, password }),
   });
   saveSession(result);
   return result;
