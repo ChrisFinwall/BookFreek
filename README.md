@@ -1,38 +1,84 @@
 # BookFreek
 
-BookFreek is a mobile-first, installable audiobook PWA for a single Jellyfin user. Jellyfin remains the library and streaming server; BookFreek adds an audiobook shelf, browser playback controls, progress updates, and chapter navigation.
+**A mobile-first audiobook player for your Jellyfin library.** BookFreek gives your audiobooks a dedicated, installable web app, while Jellyfin continues to manage and stream the media.
 
-## Requirements
+> BookFreek is an early-stage project. It has not yet been validated against a live Jellyfin server or tested on iOS/Android devices. See [Known limitations](#known-limitations).
 
-- Node.js 20 or later
-- A reachable Jellyfin server and a Jellyfin user account
-- Optional, read-only access for the companion service to the audiobook media folder for embedded/sidecar chapter extraction
+## Features
+
+- **Your Jellyfin audiobook shelf** — browse, search, and sort books from your existing Jellyfin server.
+- **Book-focused presentation** — see Jellyfin cover art, book titles, authors, and in-progress status.
+- **Mobile listening player** — play and pause, seek, skip back 15 seconds or ahead 30 seconds, and jump between chapters.
+- **Pick up where you left off** — save listening position to Jellyfin and resume an unfinished book.
+- **Chapter support** — read chapters embedded in audio files, use a JSON sidecar when present, or fall back to Jellyfin chapter metadata.
+- **Installable PWA** — add BookFreek to your Android or iPhone home screen and open it like an app.
+- **Small companion service** — connects the browser to Jellyfin, proxies artwork/audio, and can read audiobook files for chapter metadata. Media-folder access is read-only.
+- **Single-user setup** — sign in with your Jellyfin account; BookFreek does not create a separate user database.
+
+## Deploy with Portainer
+
+The repository includes a Compose stack that builds the app and companion service from source. This repository is public, so Portainer can fetch the Compose file directly from GitHub.
+
+### 1. Prepare the server
+
+The Docker host needs to:
+
+- Run Docker Compose.
+- Reach your Jellyfin server over the network.
+- Have the audiobook folder available as a local path for the Compose stack's read-only media mount.
+
+Use a Jellyfin address reachable **from the container**. For example, if Jellyfin runs on another machine, use its LAN address such as `http://192.168.1.20:8096`, not `http://localhost:8096`.
+
+### 2. Create the Portainer stack
+
+1. In Portainer, open **Stacks** and choose **Add stack**.
+2. Choose **Repository** as the build method.
+3. Set the repository URL to `https://github.com/ChrisFinwall/BookFreek`.
+4. Select the `main` branch and set the Compose path to `docker-compose.yml`.
+5. Add these stack environment variables:
+
+   | Variable | Required | Example | Purpose |
+   |---|---|---|---|
+   | `JELLYFIN_URL` | Yes | `http://192.168.1.20:8096` | Jellyfin base URL reachable from the BookFreek container |
+   | `AUDIOBOOKS_PATH` | Yes | `/mnt/media/Audiobooks` | Absolute audiobook-folder path on the Docker host; mounted read-only for embedded/sidecar chapter reading |
+   | `AUDIOBOOKS_CONTAINER_PATH` | No | `/audiobooks` | Path to that folder inside BookFreek's container; set it to match the path Jellyfin reports for those audio files |
+   | `BOOKFREEK_PORT` | No | `3001` | Host port used to open BookFreek |
+
+6. Deploy the stack. The first deployment builds the image from the repository and may take a few minutes.
+7. Open `http://<docker-host>:<BOOKFREEK_PORT>` on your local network and sign in with your Jellyfin username and password.
+
+The Compose stack expects the audiobook folder path and mounts it read-only into the companion container. The path inside BookFreek must match the file paths returned by Jellyfin for local chapter extraction; set `AUDIOBOOKS_CONTAINER_PATH` when Jellyfin uses a different container path. If the paths don't match, BookFreek falls back to Jellyfin's chapter metadata.
+
+### 3. Set up remote or mobile access
+
+For home-screen installation, serve BookFreek over **HTTPS** using your reverse proxy or trusted private-network HTTPS solution. Do not expose the plain HTTP port directly to the public internet. Configure your proxy to forward to the BookFreek container on port `3001` (or your chosen container port).
+
+Once opened securely on your phone:
+
+- **iPhone/iPad:** open the site in Safari, tap **Share**, then **Add to Home Screen**.
+- **Android:** open the site in Chrome and choose **Install app** or **Add to Home screen**.
 
 ## Local development
 
+Requirements: Node.js 20 or later and a reachable Jellyfin server.
+
 1. Copy `.env.example` to `.env`.
-2. Set `JELLYFIN_URL` to a URL reachable from the computer running the companion service, such as `http://localhost:8096`.
-3. Set `MEDIA_ROOT` to the audiobook folder path if you want embedded chapter extraction. This service only reads files.
+2. Set `JELLYFIN_URL` to the Jellyfin address reachable from your computer.
+3. Optionally set `MEDIA_ROOT` to the audiobook folder.
 4. Run `npm install`, then `npm run dev`.
-5. Open the Vite URL shown in the terminal, usually `http://localhost:5173`, and sign in with your Jellyfin username and password.
+5. Open `http://localhost:5173`.
 
-The Jellyfin password is sent to the companion service only for sign-in. The service stores the resulting Jellyfin access token in an HTTP-only, same-site cookie; it is not exposed to browser JavaScript or placed in the audio URL. The browser remembers only the signed-in username and user ID. The server URL is configured in the companion service's environment; credentials are not saved in `.env`.
+For a production build outside Portainer, run `npm run build`, set `NODE_ENV=production`, and run `npm start`. The production server serves both the app and its API on port `3001` by default.
 
-## Production
+## Chapter files
 
-Run `npm run build`, then set `NODE_ENV=production` and start with `npm start`. The companion service serves the built PWA and the `/api` endpoints on the same port (default `3001`). Configure HTTPS at your reverse proxy for home-screen installation and secure credential transport. Do not expose an unencrypted login to the public internet.
+When `MEDIA_ROOT` (or the Compose `AUDIOBOOKS_PATH`) is configured and the Jellyfin item path is inside that folder, BookFreek checks:
 
-For Docker deployment, build with `docker build -t bookfreek .` and run with `JELLYFIN_URL`, `MEDIA_ROOT=/audiobooks`, and a read-only volume mount such as `-v "C:\Media\Audiobooks:/audiobooks:ro"` (use the host path format required by your Docker shell). The companion service does not need to run on the Jellyfin host, and it does not modify or copy audiobook files. It must be able to reach Jellyfin and read the media folder if embedded chapters are required.
+1. `<audio-file>.chapters.json` — for example, `The Book.m4b.chapters.json`.
+2. Chapter metadata embedded in the audio file.
+3. Jellyfin's chapter metadata as a fallback.
 
-## Chapters
-
-When `MEDIA_ROOT` is configured and Jellyfin provides an item path within it, BookFreek checks:
-
-1. A JSON sidecar at `<audio-file>.chapters.json`, for example `The Book.m4b.chapters.json`.
-2. Embedded chapter metadata readable by `music-metadata`.
-3. Jellyfin's item chapter metadata as a fallback.
-
-Sidecar JSON may be an array or `{ "chapters": [...] }`. Each entry accepts `title` or `name`, and `start`, `startTime`, or `startSeconds` in seconds; optional `end`, `endTime`, or `endSeconds` is also in seconds. Example:
+A sidecar can be a JSON array or an object containing a `chapters` array. Times are in seconds:
 
 ```json
 {
@@ -43,12 +89,31 @@ Sidecar JSON may be an array or `{ "chapters": [...] }`. Each entry accepts `tit
 }
 ```
 
-Malformed sidecars are logged by the companion service, after which embedded/Jellyfin chapter metadata is used if available.
+The fields `title` or `name` can name a chapter. Its start time can use `start`, `startTime`, or `startSeconds`; an optional end time can use `end`, `endTime`, or `endSeconds`. Give the container read-only access to the media folder; BookFreek does not edit or copy audiobook files.
 
-## Current MVP notes
+## Security and privacy
 
-- Library listing queries Jellyfin audio and book items and supports server-side title sorting, year sorting, recent-first sorting, and search.
-- Audio is streamed by the companion service from Jellyfin with HTTP range support; the Jellyfin token is kept in an HTTP-only cookie and is not placed in the audio URL.
-- The service stores no user database and is intended for one trusted user. Protect it behind HTTPS and do not publicly expose it without adding an authentication boundary.
-- The PWA shell is available offline, but media/offline audiobook downloads are not implemented.
-- iOS and Android differ in background audio and PWA installation behavior; install from the browser's share/menu UI. Background playback should be tested on the target devices.
+- BookFreek sends the Jellyfin password to its companion service to authenticate with Jellyfin. It does not save the password.
+- The Jellyfin token is held in an HTTP-only, same-site cookie rather than browser-accessible storage or the audio URL.
+- Use HTTPS whenever credentials or listening sessions travel over a network you do not fully trust.
+- The repository contains application source and deployment configuration, not your library, Jellyfin credentials, or server environment file. Do not commit `.env` or other secrets.
+- The companion service is intended for one trusted user. Keep it behind your private network or a properly secured HTTPS proxy; do not treat a public GitHub repository as the deployment's authentication or network security.
+
+## Known limitations
+
+- This is an initial implementation and still needs validation against a real Jellyfin library and live audio playback.
+- PWA installation, background playback, and browser audio support differ between iOS and Android; test on your own devices.
+- The service asks Jellyfin for up to 500 matching audio/book items per request.
+- Offline audiobook downloads are not implemented. Only the web app shell may be cached.
+- Embedded chapter extraction requires the companion service to be able to read the corresponding media file. Without that, only chapters returned by Jellyfin are available.
+
+## Contributing
+
+Issues and pull requests are welcome. Before submitting changes, run:
+
+```sh
+npm install
+npm test
+npm run typecheck
+npm run build
+```

@@ -173,29 +173,29 @@ app.get("/api/books/:id/chapters", auth, async (req: AuthenticatedRequest, res) 
     if (mediaRoot && item.Path) {
       const audioPath = insideMediaRoot(item.Path);
       if (!audioPath) {
-        res.status(403).json({ error: "The audiobook path is outside the configured read-only media root." });
-        return;
-      }
-      const sidecarPath = `${audioPath}.chapters.json`;
-      try {
-        const { readFile } = await import("node:fs/promises");
-        const data = JSON.parse(await readFile(sidecarPath, "utf8")) as unknown;
-        res.json(parseSidecar(data));
-        return;
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-          console.warn(`Could not read chapter sidecar ${sidecarPath}:`, error);
-        }
-      }
-      try {
-        const metadata = await parseFile(audioPath, { duration: true });
-        const embedded = metadata.common.chapters ?? [];
-        if (embedded.length) {
-          res.json(embedded.map((chapter) => ({ title: chapter.title, start: chapter.startTime, end: chapter.endTime })));
+        console.warn(`Jellyfin path for ${item.Id} is outside MEDIA_ROOT; using Jellyfin chapters.`);
+      } else {
+        const sidecarPath = `${audioPath}.chapters.json`;
+        try {
+          const { readFile } = await import("node:fs/promises");
+          const data = JSON.parse(await readFile(sidecarPath, "utf8")) as unknown;
+          res.json(parseSidecar(data));
           return;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            console.warn(`Could not read chapter sidecar ${sidecarPath}:`, error);
+          }
         }
-      } catch (error) {
-        console.warn(`Could not parse embedded chapters for ${item.Id}:`, error);
+        try {
+          const metadata = await parseFile(audioPath, { duration: true });
+          const embedded = metadata.common.chapters ?? [];
+          if (embedded.length) {
+            res.json(embedded.map((chapter) => ({ title: chapter.title, start: chapter.startTime, end: chapter.endTime })));
+            return;
+          }
+        } catch (error) {
+          console.warn(`Could not parse embedded chapters for ${item.Id}:`, error);
+        }
       }
     }
     res.json((item.Chapters ?? []).map((chapter, index) => ({

@@ -1,0 +1,18 @@
+services:
+  bookfreek:
+    build:
+      context: .
+    container_name: bookfreek
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      JELLYFIN_URL: ${JELLYFIN_URL:?Set JELLYFIN_URL to an address reachable from this container}
+      MEDIA_ROOT: ${AUDIOBOOKS_CONTAINER_PATH:-/audiobooks}
+    ports:
+      - "${BOOKFREEK_PORT:-3001}:3001"
+    volumes:
+      - type: bind
+        source: ${AUDIOBOOKS_PATH:?Set AUDIOBOOKS_PATH to the audiobook folder on the Docker host}
+        target: ${AUDIOBOOKS_CONTAINER_PATH:-/audiobooks}
+        read_only: true
