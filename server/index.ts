@@ -184,10 +184,10 @@ app.get("/api/books/:id/chapters", auth, async (req: AuthenticatedRequest, res) 
           }
         }
         try {
-          const metadata = await parseFile(audioPath, { duration: true });
-          const embedded = metadata.common.chapters ?? [];
+          const metadata = await parseFile(audioPath, { duration: true, includeChapters: true });
+          const embedded = metadata.format.chapters ?? [];
           if (embedded.length) {
-            res.json(embedded.map((chapter) => ({ title: chapter.title, start: chapter.startTime, end: chapter.endTime })));
+            res.json(embedded.map((chapter) => ({ title: chapter.title, start: chapter.start, end: chapter.end })));
             return;
           }
         } catch (error) {
