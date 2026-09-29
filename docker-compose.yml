@@ -7,6 +7,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
       MEDIA_ROOT: ${AUDIOBOOKS_CONTAINER_PATH:-/audiobooks}
     ports:
       - "${BOOKFREEK_PORT:-17843}:3001"

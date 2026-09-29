@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { jellyfinAuthorization, normalizeJellyfinUrl } from "./config.js";
+import { jellyfinAuthorization, normalizeJellyfinUrl, sessionCookieSecure } from "./config.js";
 
 test("normalizes Jellyfin server addresses and preserves reverse-proxy paths", () => {
   assert.equal(normalizeJellyfinUrl(" http://media.local:8096/ "), "http://media.local:8096");
@@ -24,4 +24,10 @@ test("uses Jellyfin's standard Authorization header with app identity and option
     jellyfinAuthorization("token-value"),
     'MediaBrowser Client="BookFreek", Device="Web", DeviceId="bookfreek-web", Version="0.1.0", Token="token-value"',
   );
+});
+
+test("only marks session cookies secure when explicitly enabled", () => {
+  assert.equal(sessionCookieSecure(undefined), false);
+  assert.equal(sessionCookieSecure("false"), false);
+  assert.equal(sessionCookieSecure("TRUE"), true);
 });

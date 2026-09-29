@@ -22,3 +22,7 @@ export function jellyfinAuthorization(token?: string) {
   if (token) fields.push(`Token="${encodeURIComponent(token)}"`);
   return `MediaBrowser ${fields.join(", ")}`;
 }
+
+export function sessionCookieSecure(value: string | undefined) {
+  return value?.toLowerCase() === "true";
+}

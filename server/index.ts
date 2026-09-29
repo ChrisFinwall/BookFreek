@@ -4,7 +4,7 @@ import { parseFile } from "music-metadata";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseSidecar } from "./chapters.js";
-import { jellyfinAuthorization, normalizeJellyfinUrl } from "./config.js";
+import { jellyfinAuthorization, normalizeJellyfinUrl, sessionCookieSecure } from "./config.js";
 
 dotenv.config();
 
@@ -74,7 +74,7 @@ function sessionCookie(req: Request, name: string) {
 }
 
 function setSessionCookies(res: Response, token?: string, serverUrl?: string) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  const secure = sessionCookieSecure(process.env.COOKIE_SECURE) ? "; Secure" : "";
   const maxAge = token ? "Max-Age=604800" : "Max-Age=0";
   res.append("Set-Cookie", [
     `bookfreek_token=${encodeURIComponent(token ?? "")}; HttpOnly; SameSite=Strict; Path=/api; ${maxAge}${secure}`,
